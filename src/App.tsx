@@ -1,9 +1,9 @@
 import { Menu, X, Phone, Mail, ArrowRight, CheckCircle2, TrendingUp, Target, Zap, Users, BarChart3, Search, MessageSquare, Eye, Globe, Star, Clock, Award, ChevronRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import emailjs from '@emailjs/browser';
 import RippleGrid from './components/RippleGrid';
 import Waves from './components/Waves';
 import ScrollProgress from './components/ScrollProgress';
-import SocialProofNotification from './components/SocialProofNotification';
 import FloatingContact from './components/FloatingContact';
 import AnimatedStats from './components/AnimatedStats';
 import AnimatedSection from './components/AnimatedSection';
@@ -13,6 +13,24 @@ import { useScrollAnimation, useCountUp } from './hooks/useScrollAnimation';
 function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // Contact form state
+  const [formData, setFormData] = useState({
+    from_name: '',
+    business_name: '',
+    from_email: '',
+    phone: '',
+    website: '',
+    budget: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  // EmailJS Configuration - Get from environment variables
+  const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_orbbcdo';
+  const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'YOUR_TEMPLATE_ID';
+  const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'YOUR_PUBLIC_KEY';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,10 +47,76 @@ function App() {
     };
   }, []);
 
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+
+    try {
+      // Initialize EmailJS with your public key
+      emailjs.init(EMAILJS_PUBLIC_KEY);
+
+      // Send email using EmailJS
+      const result = await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_TEMPLATE_ID,
+        {
+          from_name: formData.from_name,
+          business_name: formData.business_name,
+          from_email: formData.from_email,
+          phone: formData.phone,
+          website: formData.website || 'Not provided',
+          budget: formData.budget || 'Not specified',
+          message: formData.message || 'No additional details provided',
+          to_email: 'saed@optimisedmarketing.online'
+        }
+      );
+
+      console.log('Email sent successfully:', result);
+      setSubmitStatus('success');
+
+      // Reset form
+      setFormData({
+        from_name: '',
+        business_name: '',
+        from_email: '',
+        phone: '',
+        website: '',
+        budget: '',
+        message: ''
+      });
+
+      // Reset success message after 5 seconds
+      setTimeout(() => {
+        setSubmitStatus('idle');
+      }, 5000);
+
+    } catch (error) {
+      console.error('Email send failed:', error);
+      setSubmitStatus('error');
+
+      // Reset error message after 5 seconds
+      setTimeout(() => {
+        setSubmitStatus('idle');
+      }, 5000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white text-gray-900 overflow-x-hidden">
       <ScrollProgress />
-      <SocialProofNotification />
       <FloatingContact />
 
       <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-black/98 backdrop-blur-xl border-b border-gray-800 shadow-2xl' : 'bg-black/90 backdrop-blur-lg'}`}>
@@ -661,12 +745,15 @@ function App() {
           </div>
 
           <div className="bg-white/5 border border-white/10 p-8 md:p-12 backdrop-blur-sm">
-            <form className="space-y-6">
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-white font-bold mb-2 uppercase text-sm">Your Name *</label>
                   <input
                     type="text"
+                    name="from_name"
+                    value={formData.from_name}
+                    onChange={handleInputChange}
                     className="w-full bg-white/10 border border-white/20 text-white px-4 py-3 focus:outline-none focus:border-[#FDB515] transition-colors"
                     placeholder="John Smith"
                     required
@@ -676,6 +763,9 @@ function App() {
                   <label className="block text-white font-bold mb-2 uppercase text-sm">Business Name *</label>
                   <input
                     type="text"
+                    name="business_name"
+                    value={formData.business_name}
+                    onChange={handleInputChange}
                     className="w-full bg-white/10 border border-white/20 text-white px-4 py-3 focus:outline-none focus:border-[#FDB515] transition-colors"
                     placeholder="Smith & Co"
                     required
@@ -688,6 +778,9 @@ function App() {
                   <label className="block text-white font-bold mb-2 uppercase text-sm">Email *</label>
                   <input
                     type="email"
+                    name="from_email"
+                    value={formData.from_email}
+                    onChange={handleInputChange}
                     className="w-full bg-white/10 border border-white/20 text-white px-4 py-3 focus:outline-none focus:border-[#FDB515] transition-colors"
                     placeholder="john@smithco.com.au"
                     required
@@ -697,6 +790,9 @@ function App() {
                   <label className="block text-white font-bold mb-2 uppercase text-sm">Phone *</label>
                   <input
                     type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
                     className="w-full bg-white/10 border border-white/20 text-white px-4 py-3 focus:outline-none focus:border-[#FDB515] transition-colors"
                     placeholder="04XX XXX XXX"
                     required
@@ -708,6 +804,9 @@ function App() {
                 <label className="block text-white font-bold mb-2 uppercase text-sm">Website (if applicable)</label>
                 <input
                   type="url"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleInputChange}
                   className="w-full bg-white/10 border border-white/20 text-white px-4 py-3 focus:outline-none focus:border-[#FDB515] transition-colors"
                   placeholder="www.yoursite.com.au"
                 />
@@ -715,28 +814,55 @@ function App() {
 
               <div>
                 <label className="block text-white font-bold mb-2 uppercase text-sm">Monthly Marketing Budget</label>
-                <select className="w-full bg-white/10 border border-white/20 text-white px-4 py-3 focus:outline-none focus:border-[#FDB515] transition-colors">
+                <select
+                  name="budget"
+                  value={formData.budget}
+                  onChange={handleInputChange}
+                  className="w-full bg-white/10 border border-white/20 text-white px-4 py-3 focus:outline-none focus:border-[#FDB515] transition-colors"
+                >
                   <option value="">Select a range</option>
-                  <option value="1000-2500">$1,000 - $2,500</option>
-                  <option value="2500-5000">$2,500 - $5,000</option>
-                  <option value="5000-10000">$5,000 - $10,000</option>
-                  <option value="10000+">$10,000+</option>
+                  <option value="$1,000 - $2,500">$1,000 - $2,500</option>
+                  <option value="$2,500 - $5,000">$2,500 - $5,000</option>
+                  <option value="$5,000 - $10,000">$5,000 - $10,000</option>
+                  <option value="$10,000+">$10,000+</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-white font-bold mb-2 uppercase text-sm">What are your main goals?</label>
                 <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleInputChange}
                   className="w-full bg-white/10 border border-white/20 text-white px-4 py-3 focus:outline-none focus:border-[#FDB515] transition-colors h-32 resize-none"
                   placeholder="Tell us what you want to achieve..."
                 ></textarea>
               </div>
 
+              {submitStatus === 'success' && (
+                <div className="bg-green-500/20 border-2 border-green-500 text-white px-6 py-4 rounded-lg flex items-center space-x-3">
+                  <CheckCircle2 className="w-6 h-6 text-green-500" />
+                  <span className="font-bold">Success! We'll contact you within 24 hours.</span>
+                </div>
+              )}
+
+              {submitStatus === 'error' && (
+                <div className="bg-red-500/20 border-2 border-red-500 text-white px-6 py-4 rounded-lg flex items-center space-x-3">
+                  <X className="w-6 h-6 text-red-500" />
+                  <span className="font-bold">Failed to send. Please try again or email us directly.</span>
+                </div>
+              )}
+
               <button
                 type="submit"
-                className="w-full bg-[#FDB515] text-black py-5 font-black text-lg uppercase hover:bg-[#f5a400] hover:scale-105 transition-all shadow-2xl shadow-[#FDB515]/30"
+                disabled={isSubmitting}
+                className={`w-full bg-[#FDB515] text-black py-5 font-black text-lg uppercase transition-all shadow-2xl shadow-[#FDB515]/30 ${
+                  isSubmitting
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-[#f5a400] hover:scale-105'
+                }`}
               >
-                Book My Strategy Call
+                {isSubmitting ? 'SENDING...' : 'Book My Strategy Call'}
               </button>
 
               <p className="text-center text-gray-400 text-sm">
